@@ -1,9 +1,5 @@
 package com.rachev.foreignexchange.controllers;
 
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
-
 import com.rachev.foreignexchange.services.ExchangeRatesConverterService;
 import com.rachev.foreignexchange.utils.ControllersHelper;
 import io.swagger.annotations.ApiResponse;
@@ -27,11 +23,14 @@ public class ExchangeRatesConverterController {
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private final ExchangeRatesConverterService exchangeRatesConverterService;
+  private final ExchangeRatesConverterService.Async asyncExchangeRatesConverterService;
 
   @Autowired
   public ExchangeRatesConverterController(
-      final ExchangeRatesConverterService exchangeRatesConverterService) {
+      final ExchangeRatesConverterService exchangeRatesConverterService,
+      final ExchangeRatesConverterService.Async asyncExchangeRatesConverterService) {
     this.exchangeRatesConverterService = exchangeRatesConverterService;
+    this.asyncExchangeRatesConverterService = asyncExchangeRatesConverterService;
   }
 
   @ApiResponses({
@@ -69,10 +68,31 @@ public class ExchangeRatesConverterController {
         .onErrorReturn(ex -> {
           if (ex instanceof IllegalStateException) {
             logger.warn(ex.getMessage());
-            return new ResponseEntity<>(ex.getMessage(), NOT_FOUND);
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
           }
-          return new ResponseEntity<>(ex.getMessage(), INTERNAL_SERVER_ERROR);
+          return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         })
-        .blockingGet(new ResponseEntity<>(UNPROCESSABLE_ENTITY));
+        .blockingGet(new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY));
+  }
+
+  @GetMapping("/convertAsync")
+  public ResponseEntity<?> convertAsync(@RequestParam final String from, 
+      @RequestParam final String to, final @RequestParam String amount) {
+
+    if (StringUtils.isAnyEmpty(from, to, amount)) {
+      return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    }
+
+    if (!ControllersHelper.isDoubleParsable(amount)) {
+      return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    }
+
+    return asyncExchangeRatesConverterService.convert(from, to, Double.parseDouble(amount))
+        .thenApply(ResponseEntity::ok)
+        .exceptionally(ex -> ResponseEntity.status(ex instanceof IllegalStateException
+            ? HttpStatus.NOT_FOUND
+            : HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ex.getMessage()))
+        .join();
   }
 }

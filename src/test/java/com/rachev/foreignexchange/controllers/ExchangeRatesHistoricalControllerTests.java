@@ -21,7 +21,7 @@ public class ExchangeRatesHistoricalControllerTests {
   @BeforeEach
   public void setup() {
     exchangeRatesHistoricalService = mock(ExchangeRatesHistoricalService.class);
-    controller = new ExchangeRatesHistoricalController(exchangeRatesHistoricalService);
+    controller = new ExchangeRatesHistoricalController(exchangeRatesHistoricalService, null);
   }
 
   @Test

@@ -23,7 +23,7 @@ public class ExchangeRatesControllerTests {
   @BeforeEach
   public void setup() {
     exchangeRatesService = mock(ExchangeRatesService.class);
-    controller = new ExchangeRatesController(exchangeRatesService);
+    controller = new ExchangeRatesController(exchangeRatesService, null);
   }
 
   @Test
